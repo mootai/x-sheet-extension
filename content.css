@@ -1,0 +1,226 @@
+/* モーダル */
+.xsheet-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.xsheet-modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: xsheetModalSlideIn 0.3s ease;
+}
+
+@keyframes xsheetModalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.xsheet-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #e1e8ed;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.xsheet-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+    color: #14171a;
+}
+
+.xsheet-close-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #657786;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.xsheet-close-button:hover {
+    background: #f5f8fa;
+    color: #14171a;
+}
+
+.xsheet-modal-body {
+    padding: 20px;
+}
+
+/* シート一覧 */
+.xsheet-sheet-list {
+    margin-bottom: 20px;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.xsheet-sheet-item {
+    padding: 15px;
+    border-bottom: 1px solid #e1e8ed;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.xsheet-sheet-item:last-child {
+    border-bottom: none;
+}
+
+.xsheet-sheet-item:hover {
+    background: #f5f8fa;
+}
+
+.xsheet-sheet-info {
+    flex-grow: 1;
+}
+
+.xsheet-sheet-title {
+    font-weight: bold;
+    color: #14171a;
+    margin-bottom: 5px;
+}
+
+.xsheet-sheet-date {
+    font-size: 12px;
+    color: #657786;
+}
+
+.xsheet-select-button {
+    background: #1da1f2;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    opacity: 0;
+}
+
+.xsheet-sheet-item:hover .xsheet-select-button {
+    opacity: 1;
+}
+
+.xsheet-select-button:hover {
+    background: #1991db;
+}
+
+/* 新規シート作成 */
+.xsheet-new-sheet {
+    text-align: center;
+}
+
+.xsheet-new-sheet-button {
+    background: #17bf63;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.xsheet-new-sheet-button:hover {
+    background: #14a358;
+}
+
+/* ローディング */
+.xsheet-loading {
+    padding: 20px;
+    text-align: center;
+    color: #657786;
+}
+
+/* エラー */
+.xsheet-error {
+    padding: 20px;
+    text-align: center;
+    color: #e0245e;
+}
+
+.xsheet-retry-button {
+    background: none;
+    border: 1px solid #e0245e;
+    color: #e0245e;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.xsheet-retry-button:hover {
+    background: #fdf2f2;
+}
+
+/* 通知 */
+.xsheet-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    animation: xsheetNotificationSlideIn 0.3s ease;
+}
+
+@keyframes xsheetNotificationSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.xsheet-notification-success {
+    background: #17bf63;
+    color: white;
+}
+
+.xsheet-notification-error {
+    background: #e0245e;
+    color: white;
+}
+
+.xsheet-notification-info {
+    background: #1da1f2;
+    color: white;
+}
