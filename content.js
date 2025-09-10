@@ -23,14 +23,14 @@ function setupLikeButtonObserver() {
 function checkForLikeButtons() {
     // いいねボタンを探す（X/Twitterの属性セレクタを使用）
     const likeButtons = document.querySelectorAll('[data-testid="like"]');
-    
+
     likeButtons.forEach(button => {
         // 既に処理済みのボタンはスキップ
         if (button.dataset.xsheetProcessed) return;
-        
+
         // ボタンを処理済みとしてマーク
         button.dataset.xsheetProcessed = 'true';
-        
+
         // いいねイベントのリスナーを追加
         button.addEventListener('click', handleLikeButtonClick);
     });
@@ -41,6 +41,10 @@ async function handleLikeButtonClick(event) {
     // いいねされた要素から投稿データを取得
     const tweetElement = event.target.closest('article');
     if (!tweetElement) return;
+
+    // いいね解除された場合はスキップ
+    const unlike = tweetElement.querySelector('[data-testid="unlike"]');
+    if (unlike) return;
 
     const tweetData = extractTweetData(tweetElement);
     if (!tweetData) return;
@@ -119,6 +123,15 @@ function showSheetSelectionModal(tweetData) {
         existingModal.remove();
     }
 
+    // アカウント情報を取得
+    const accountInfo = getAccountInfo();
+    const accountDisplay = accountInfo.isLoggedIn 
+        ? `<div class="xsheet-account-info">
+             <span class="xsheet-account-name">${accountInfo.accountName}</span>
+             <span class="xsheet-account-id">ID: ${accountInfo.accountId}</span>
+           </div>`
+        : '<div class="xsheet-account-info xsheet-not-logged-in">ログインしていません</div>';
+
     // モーダルを作成
     const modal = document.createElement('div');
     modal.className = 'xsheet-modal';
@@ -126,6 +139,7 @@ function showSheetSelectionModal(tweetData) {
         <div class="xsheet-modal-content">
             <div class="xsheet-modal-header">
                 <h2>シートを選択</h2>
+                ${accountDisplay}
                 <button class="xsheet-close-button">&times;</button>
             </div>
             <div class="xsheet-modal-body">
@@ -162,18 +176,25 @@ function showSheetSelectionModal(tweetData) {
 // シート一覧の読み込み
 async function loadSheetList(modal, tweetData) {
     const sheetList = modal.querySelector('.xsheet-sheet-list');
-    
+
     try {
         console.log('シート一覧を取得中...');
-        
+
+        // ログイン状態を確認
+        const isLoggedIn = await checkLoginStatus();
+        if (!isLoggedIn) {
+            console.log('ログインしていません');
+            throw new Error('認証が必要です');
+        }
+
         // APIトークンを取得または確認
         const apiToken = await getApiToken();
         if (!apiToken) {
             console.log('APIトークンが取得できませんでした');
             throw new Error('認証が必要です');
         }
-        
-        const response = await fetch('https://x-sheet.com/api/sheets', {
+
+        const response = await fetch(`${XSHEET_BASE_URL}/api/sheets`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -182,44 +203,21 @@ async function loadSheetList(modal, tweetData) {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
-        
+
         console.log('APIレスポンス:', {
             status: response.status,
             statusText: response.statusText,
             headers: Object.fromEntries(response.headers.entries())
         });
-        
+
         if (!response.ok) {
             const responseText = await response.text();
             console.log('エラーレスポンス本文:', responseText);
 
             if (response.status === 401) {
-                // 認証が必要な場合の処理
-                let loginUrl = 'https://x-sheet.com/login';
-                
-                try {
-                    const errorData = JSON.parse(responseText);
-                    if (errorData.loginUrl) {
-                        loginUrl = errorData.loginUrl;
-                    }
-                } catch (e) {
-                    // JSONパースエラーの場合はデフォルトURLを使用
-                    console.log('レスポンスJSONパースエラー、デフォルトログインURLを使用');
-                }
-                
-                // ログインページをポップアップで開く
-                const loginWindow = window.open(loginUrl, 'login', 
-                    'width=600,height=400,menubar=no,toolbar=no,location=no,status=no');
-                
-                // ログインウィンドウが閉じられたら再試行   
-                const checkLoginInterval = setInterval(() => {
-                    if (loginWindow.closed) {
-                        clearInterval(checkLoginInterval);
-                        // APIキー設定モーダルを表示
-                        showApiKeyModal();
-                    }
-                }, 1000);
-                
+                // APIキー認証エラーの場合
+                console.log('APIキー認証エラー');
+                showApiKeyErrorModal('APIキーが無効または期限切れです。シート一覧を取得できません。');
                 return;
             }
             throw new Error(`シート一覧の取得に失敗しました: ${response.status} ${response.statusText}\n${responseText}`);
@@ -230,7 +228,7 @@ async function loadSheetList(modal, tweetData) {
         console.log('APIレスポンス本文:', responseData);
 
         const data = await response.json();
-        
+
         if (data.success && data.sheets) {
             // シート一覧を表示
             sheetList.innerHTML = data.sheets.map(sheet => `
@@ -292,7 +290,7 @@ async function saveToSheet(tweetData, sheetId, sheetTitle, modal) {
             throw new Error('APIトークンが取得できませんでした');
         }
 
-        const response = await fetch('https://x-sheet.com/api/posts', {
+        const response = await fetch(`${XSHEET_BASE_URL}/api/posts`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -322,29 +320,14 @@ async function saveToSheet(tweetData, sheetId, sheetTitle, modal) {
             console.error('JSONパースエラー:', e);
             throw new Error('サーバーからの応答が不正です');
         }
-        
+
         if (response.ok) {
             showNotification(`シート「${sheetTitle}」に追加しました`, 'success');
             modal.remove();
         } else if (response.status === 401) {
-            // 認証エラーの場合
-            let loginUrl = 'https://x-sheet.com/login';
-            const loginUrlHeader = response.headers.get('X-Login-URL');
-            if (loginUrlHeader) {
-                loginUrl = loginUrlHeader;
-            }
-            
-            // ログインページを開く
-            const loginWindow = window.open(loginUrl, 'login', 
-                'width=600,height=400,menubar=no,toolbar=no,location=no,status=no');
-            
-            const checkLoginInterval = setInterval(() => {
-                if (loginWindow.closed) {
-                    clearInterval(checkLoginInterval);
-                    showNotification('APIキーを設定してください', 'info');
-                    showApiKeyModal();
-                }
-            }, 1000);
+            // APIキー認証エラーの場合
+            console.log('APIキー認証エラー');
+            showApiKeyErrorModal('APIキーが無効または期限切れです。ツイートを保存できません。');
         } else {
             throw new Error(data.error || '保存に失敗しました');
         }
@@ -374,7 +357,7 @@ async function getApiToken() {
         // Chrome拡張機能のストレージからAPIキーを取得
         chrome.storage.sync.get(['xsheet-api-key'], (result) => {
             const apiKey = result['xsheet-api-key'];
-            
+
             if (apiKey && apiKey.trim()) {
                 console.log('保存されたAPIキーを使用:', apiKey.substring(0, 10) + '...');
                 resolve(apiKey.trim());
@@ -388,14 +371,159 @@ async function getApiToken() {
     });
 }
 
+// APIキー承認エラー時のモーダルを表示
+function showApiKeyErrorModal(errorMessage = 'APIキーの認証に失敗しました') {
+    const errorModal = document.createElement('div');
+    errorModal.className = 'xsheet-modal';
+    errorModal.innerHTML = `
+        <div class="xsheet-modal-content">
+            <div class="xsheet-modal-header">
+                <h2>APIキー認証エラー</h2>
+                <button class="xsheet-close-button">&times;</button>
+            </div>
+            <div class="xsheet-modal-body">
+                <div class="xsheet-error-icon">⚠️</div>
+                <p class="xsheet-error-message">${errorMessage}</p>
+                <p>APIキーを再入力するか、新しいAPIキーを発行してください。</p>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="xsheet-retry-api-key-button" style="background: #1d9bf0; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin-right: 10px; font-size: 14px;">
+                        APIキーを再入力
+                    </button>
+                    <button class="xsheet-regenerate-api-key-button" style="background: #17bf63; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin-right: 10px; font-size: 14px;">
+                        新しいAPIキーを発行
+                    </button>
+                    <button class="xsheet-open-settings-button" style="background: #657786; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                        設定ページを開く
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(errorModal);
+
+    // 閉じるボタンの処理
+    const closeButton = errorModal.querySelector('.xsheet-close-button');
+    closeButton.addEventListener('click', () => errorModal.remove());
+
+    // APIキー再入力ボタンの処理
+    const retryButton = errorModal.querySelector('.xsheet-retry-api-key-button');
+    retryButton.addEventListener('click', () => {
+        errorModal.remove();
+        showApiKeyModal();
+    });
+
+    // 新しいAPIキー発行ボタンの処理
+    const regenerateButton = errorModal.querySelector('.xsheet-regenerate-api-key-button');
+    regenerateButton.addEventListener('click', () => {
+        errorModal.remove();
+        showApiKeyRegenerateModal();
+    });
+
+    // 設定ページを開くボタンの処理
+    const settingsButton = errorModal.querySelector('.xsheet-open-settings-button');
+    settingsButton.addEventListener('click', () => {
+        window.open(`${XSHEET_BASE_URL}/settings/api`, '_blank');
+    });
+
+    // モーダルの外側をクリックして閉じる
+    errorModal.addEventListener('click', (e) => {
+        if (e.target === errorModal) {
+            errorModal.remove();
+        }
+    });
+}
+
+// APIキー再発行モーダルを表示
+function showApiKeyRegenerateModal() {
+    const regenerateModal = document.createElement('div');
+    regenerateModal.className = 'xsheet-modal';
+    regenerateModal.innerHTML = `
+        <div class="xsheet-modal-content">
+            <div class="xsheet-modal-header">
+                <h2>新しいAPIキーを発行</h2>
+                <button class="xsheet-close-button">&times;</button>
+            </div>
+            <div class="xsheet-modal-body">
+                <p>新しいAPIキーを発行します。既存のAPIキーは無効になります。</p>
+                <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1d9bf0;">
+                    <strong>注意:</strong> 既存のAPIキーを使用している他のアプリケーションや拡張機能がある場合、それらも新しいAPIキーに更新する必要があります。
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="xsheet-confirm-regenerate-button" style="background: #e0245e; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin-right: 10px; font-size: 14px;">
+                        新しいAPIキーを発行
+                    </button>
+                    <button class="xsheet-cancel-regenerate-button" style="background: #657786; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                        キャンセル
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(regenerateModal);
+
+    // 閉じるボタンの処理
+    const closeButton = regenerateModal.querySelector('.xsheet-close-button');
+    closeButton.addEventListener('click', () => regenerateModal.remove());
+
+    // 新しいAPIキー発行確認ボタンの処理
+    const confirmButton = regenerateModal.querySelector('.xsheet-confirm-regenerate-button');
+    confirmButton.addEventListener('click', async () => {
+        try {
+            // ログインページを開いて新しいAPIキーを発行してもらう
+            const loginWindow = window.open(`${XSHEET_BASE_URL}/settings/api`, '_blank');
+            
+            regenerateModal.remove();
+            showNotification('設定ページで新しいAPIキーを発行してください', 'info');
+            
+            // 設定ページが閉じられたら再確認
+            const checkClosedInterval = setInterval(() => {
+                if (loginWindow.closed) {
+                    clearInterval(checkClosedInterval);
+                    showApiKeyModal();
+                }
+            }, 1000);
+            
+        } catch (error) {
+            console.error('APIキー再発行エラー:', error);
+            showNotification('エラーが発生しました', 'error');
+        }
+    });
+
+    // キャンセルボタンの処理
+    const cancelButton = regenerateModal.querySelector('.xsheet-cancel-regenerate-button');
+    cancelButton.addEventListener('click', () => {
+        regenerateModal.remove();
+        showApiKeyModal();
+    });
+
+    // モーダルの外側をクリックして閉じる
+    regenerateModal.addEventListener('click', (e) => {
+        if (e.target === regenerateModal) {
+            regenerateModal.remove();
+        }
+    });
+}
+
 // APIキー設定モーダルを表示
 function showApiKeyModal() {
+    // アカウント情報を取得
+    const accountInfo = getAccountInfo();
+    const accountDisplay = accountInfo.isLoggedIn 
+        ? `<div class="xsheet-account-info">
+             <span class="xsheet-account-name">${accountInfo.accountName}</span>
+             <span class="xsheet-account-id">ID: ${accountInfo.accountId}</span>
+           </div>`
+        : '<div class="xsheet-account-info xsheet-not-logged-in">ログインしていません</div>';
+
     const apiKeyModal = document.createElement('div');
     apiKeyModal.className = 'xsheet-modal';
     apiKeyModal.innerHTML = `
         <div class="xsheet-modal-content">
             <div class="xsheet-modal-header">
                 <h2>X-Sheet APIキーの設定</h2>
+                ${accountDisplay}
                 <button class="xsheet-close-button">&times;</button>
             </div>
             <div class="xsheet-modal-body">
@@ -405,7 +533,7 @@ function showApiKeyModal() {
                     <input type="text" id="xsheet-api-key-input" placeholder="APIキーを入力してください" 
                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
                     <div style="font-size: 12px; color: #666; margin-bottom: 15px;">
-                        APIキーは <a href="https://x-sheet.com/settings/api" target="_blank" style="color: #1d9bf0;">X-Sheet設定ページ</a> で取得できます
+                        APIキーは <a href="${XSHEET_BASE_URL}/settings/api" target="_blank" style="color: #1d9bf0;">X-Sheet設定ページ</a> で取得できます
                     </div>
                 </div>
                 <div style="text-align: center;">
@@ -435,12 +563,16 @@ function showApiKeyModal() {
 
     // 保存ボタンの処理
     const saveButton = apiKeyModal.querySelector('.xsheet-save-api-key-button');
-    saveButton.addEventListener('click', () => {
+    saveButton.addEventListener('click', async () => {
         const apiKey = document.getElementById('xsheet-api-key-input').value.trim();
         if (apiKey) {
             // Chrome拡張機能のストレージに保存
-            chrome.storage.sync.set({'xsheet-api-key': apiKey}, () => {
+            chrome.storage.sync.set({ 'xsheet-api-key': apiKey }, async () => {
                 showNotification('APIキーを保存しました', 'success');
+                
+                // ログイン状態を再確認
+                await checkLoginStatus();
+                
                 apiKeyModal.remove();
             });
         } else {
@@ -451,7 +583,7 @@ function showApiKeyModal() {
     // 設定ページを開くボタンの処理
     const settingsButton = apiKeyModal.querySelector('.xsheet-open-settings-button');
     settingsButton.addEventListener('click', () => {
-        window.open('https://x-sheet.com/settings/api', '_blank');
+        window.open(`${XSHEET_BASE_URL}/settings/api`, '_blank');
     });
 
     // モーダルの外側をクリックして閉じる
@@ -462,9 +594,108 @@ function showApiKeyModal() {
     });
 }
 
+// ベースURL設定（開発環境と本番環境の切り替え）
+// const XSHEET_BASE_URL = 'https://x-sheet.com'; // 本番環境
+const XSHEET_BASE_URL = 'http://localhost:8443'; // 開発環境
+
+// アカウント情報を保持する変数
+let accountInfo = {
+    isLoggedIn: false,
+    accountName: '',
+    accountId: '',
+    lastChecked: 0
+};
+
+// APIキーを用いたログイン確認処理
+async function checkLoginStatus() {
+    try {
+        const apiToken = await getApiToken();
+        if (!apiToken) {
+            accountInfo.isLoggedIn = false;
+            accountInfo.accountName = '';
+            accountInfo.accountId = '';
+            return false;
+        }
+
+        // 最後にチェックした時刻から5分以内の場合はキャッシュを使用
+        const now = Date.now();
+        if (accountInfo.isLoggedIn && (now - accountInfo.lastChecked) < 5 * 60 * 1000) {
+            return true;
+        }
+
+        console.log('ログイン状態を確認中...');
+
+        const response = await fetch(`${XSHEET_BASE_URL}/api/auth/user/profile`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-API-Token': apiToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+                accountInfo.isLoggedIn = true;
+                accountInfo.accountName = data.user.name || data.user.username || '';
+                accountInfo.accountId = data.user.id || '';
+                accountInfo.lastChecked = now;
+                console.log('ログイン確認成功:', {
+                    name: accountInfo.accountName,
+                    id: accountInfo.accountId
+                });
+                return true;
+            }
+        } else if (response.status === 401) {
+            // APIキー認証エラーの場合
+            accountInfo.isLoggedIn = false;
+            accountInfo.accountName = '';
+            accountInfo.accountId = '';
+            accountInfo.lastChecked = now;
+            console.log('APIキー認証エラー');
+            
+            // エラーモーダルを表示
+            showApiKeyErrorModal('APIキーが無効または期限切れです');
+            return false;
+        }
+
+        // ログイン失敗の場合
+        accountInfo.isLoggedIn = false;
+        accountInfo.accountName = '';
+        accountInfo.accountId = '';
+        accountInfo.lastChecked = now;
+        console.log('ログイン確認失敗');
+        return false;
+
+    } catch (error) {
+        console.error('ログイン状態確認エラー:', error);
+        accountInfo.isLoggedIn = false;
+        accountInfo.accountName = '';
+        accountInfo.accountId = '';
+        return false;
+    }
+}
+
+// アカウント情報を取得（キャッシュ優先）
+function getAccountInfo() {
+    return {
+        isLoggedIn: accountInfo.isLoggedIn,
+        accountName: accountInfo.accountName,
+        accountId: accountInfo.accountId
+    };
+}
+
 // 拡張機能の初期化
 function initializeExtension() {
     setupLikeButtonObserver();
+    
+    // 初期ログイン確認を実行
+    checkLoginStatus();
+    
+    // 定期的にログイン状態を確認（10分間隔）
+    // setInterval(checkLoginStatus, 10 * 60 * 1000);
 }
 
 // 拡張機能の初期化を実行

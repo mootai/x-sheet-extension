@@ -40,6 +40,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .xsheet-modal-header h2 {
@@ -223,4 +225,50 @@
 .xsheet-notification-info {
     background: #1da1f2;
     color: white;
+}
+
+/* アカウント情報表示 */
+.xsheet-account-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 12px;
+    color: #657786;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.xsheet-account-name {
+    font-weight: 500;
+    color: #14171a;
+    margin-bottom: 2px;
+}
+
+.xsheet-account-id {
+    font-size: 11px;
+    color: #657786;
+}
+
+.xsheet-account-info.xsheet-not-logged-in {
+    color: #e0245e;
+    font-weight: 500;
+}
+
+/* エラーモーダル */
+.xsheet-error-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.xsheet-error-message {
+    font-size: 16px;
+    font-weight: 500;
+    color: #e0245e;
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #fdf2f2;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
 }
