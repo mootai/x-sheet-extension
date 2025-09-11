@@ -33,6 +33,9 @@ function checkForLikeButtons() {
 
         // いいねイベントのリスナーを追加
         button.addEventListener('click', handleLikeButtonClick);
+
+        // API承認後にシート分類UIを追加
+        addSheetClassificationUI(button);
     });
 }
 
@@ -45,6 +48,23 @@ async function handleLikeButtonClick(event) {
     // いいね解除された場合はスキップ
     const unlike = tweetElement.querySelector('[data-testid="unlike"]');
     if (unlike) return;
+
+    const xsheetSaved = tweetElement.querySelector('[data-xsheet-saved="true"]');
+    if (xsheetSaved) {
+        console.log('シート分類ボタンが既に押されているため、モーダルを表示しません');
+        return;
+    }
+
+    // シート分類ボタンが押された後の場合はスキップ（二重分類を防ぐ）
+    const classificationUI = tweetElement.querySelector('.xsheet-classification-ui');
+    if (classificationUI) {
+        const savedButtons = classificationUI.querySelectorAll('[data-xsheet-saved="true"]');
+        console.log('分類UI内の保存済みボタン数:', savedButtons.length);
+        if (savedButtons.length > 0) {
+            console.log('シート分類ボタンが既に押されているため、モーダルを表示しません');
+            return;
+        }
+    }
 
     const tweetData = extractTweetData(tweetElement);
     if (!tweetData) return;
@@ -685,6 +705,248 @@ function getAccountInfo() {
         accountName: accountInfo.accountName,
         accountId: accountInfo.accountId
     };
+}
+
+// シート分類UIを追加
+async function addSheetClassificationUI(likeButton) {
+    try {
+        // API承認状態を確認
+        const isLoggedIn = await checkLoginStatus();
+        if (!isLoggedIn) {
+            console.log('API承認されていないため、シート分類UIを追加しません');
+            return;
+        }
+
+        // 4つ上の階層のdivタグを取得
+        const targetDiv = getTargetDiv(likeButton);
+        if (!targetDiv) {
+            console.log('対象のdivタグが見つかりません');
+            return;
+        }
+
+        // 既にシート分類UIが追加されているかチェック
+        if (targetDiv.querySelector('.xsheet-classification-ui')) {
+            return;
+        }
+
+        // シート一覧を取得
+        const sheets = await getSheets();
+        if (!sheets || sheets.length === 0) {
+            console.log('シートが見つかりません');
+            return;
+        }
+
+        // 新しいdivタグを作成
+        const classificationDiv = createClassificationDiv(sheets, likeButton);
+        
+        // 対象のdivタグに追加
+        targetDiv.appendChild(classificationDiv);
+
+        console.log('シート分類UIを追加しました');
+
+    } catch (error) {
+        console.error('シート分類UIの追加に失敗:', error);
+    }
+}
+
+// 4つ上の階層のdivタグを取得
+function getTargetDiv(likeButton) {
+    let currentElement = likeButton;
+    let level = 0;
+    
+    while (currentElement && level < 4) {
+        currentElement = currentElement.parentElement;
+        level++;
+    }
+    
+    // divタグを探す
+    while (currentElement && currentElement.tagName !== 'DIV') {
+        currentElement = currentElement.parentElement;
+    }
+    
+    return currentElement;
+}
+
+// シート一覧を取得
+async function getSheets() {
+    try {
+        const apiToken = await getApiToken();
+        if (!apiToken) {
+            return null;
+        }
+
+        const response = await fetch(`${XSHEET_BASE_URL}/api/sheets`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-API-Token': apiToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.sheets) {
+                return data.sheets;
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('シート一覧の取得に失敗:', error);
+        return null;
+    }
+}
+
+// 分類用のdivタグを作成
+function createClassificationDiv(sheets, likeButton) {
+    const classificationDiv = document.createElement('div');
+    classificationDiv.className = 'css-175oi2r r-1kbdv8c r-18u37iz r-1wtj0ep r-1ye8kvj r-1s2bzr4 xsheet-classification-ui';
+    classificationDiv.style.cssText = `
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 8px;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+        color: rgb(113, 118, 123);
+    `;
+
+    // シート名ボタンを作成
+    sheets.forEach(sheet => {
+        const sheetButton = createSheetButton(sheet, likeButton);
+        classificationDiv.appendChild(sheetButton);
+    });
+
+    // ホバー時に表示
+    const parentDiv = getTargetDiv(likeButton);
+    // if (parentDiv) {
+    //     parentDiv.addEventListener('mouseenter', () => {
+    //         classificationDiv.style.opacity = '1';
+    //     });
+        
+    //     parentDiv.addEventListener('mouseleave', () => {
+    //         classificationDiv.style.opacity = '0';
+    //     });
+    // }
+
+    return classificationDiv;
+}
+
+// シート名ボタンを作成
+function createSheetButton(sheet, likeButton) {
+    const button = document.createElement('button');
+    button.className = 'xsheet-sheet-button';
+    button.textContent = sheet.title;
+    button.style.cssText = `
+        background: none;
+        color: #71767B;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    `;
+
+    button.addEventListener('mouseenter', () => {
+        button.style.background = 'rgba(249, 24, 128, 0.1)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+        button.style.background = 'none';
+    });
+
+    button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        try {
+            // ツイートデータを取得
+            const tweetElement = likeButton.closest('article');
+            if (!tweetElement) return;
+
+            const tweetData = extractTweetData(tweetElement);
+            if (!tweetData) return;
+
+            // シートに保存
+            await saveToSheetDirect(tweetData, sheet.id, sheet.title);
+            
+            // 元のいいねボタンも押す（JSは作動させない）
+            const originalLikeButton = tweetElement.querySelector('[data-testid="like"]');
+            originalLikeButton.dataset.xsheetSaved = 'true';
+            if (originalLikeButton) {
+                // 一時的にイベントリスナーを無効化
+                // const tempHandler = originalLikeButton.onclick;
+                // originalLikeButton.onclick = null;
+                
+                // クリックイベントを発火
+                originalLikeButton.click();
+                
+                // イベントリスナーを復元
+                // setTimeout(() => {
+                //     originalLikeButton.onclick = tempHandler;
+                // }, 100);
+            }
+            
+            // ボタンの状態を永続的に変更（いいね後）
+            button.style.background = 'none';
+            button.style.color = 'rgb(249, 24, 128)';
+            button.textContent = '✓ 保存済み';
+            button.dataset.xsheetSaved = 'true';
+            
+            // デバッグ用：属性が正しく設定されているか確認
+            console.log('data-xsheet-saved属性を設定:', button.dataset.xsheetSaved);
+
+        } catch (error) {
+            console.error('シートへの保存に失敗:', error);
+            showNotification('保存に失敗しました', 'error');
+        }
+    });
+
+    return button;
+}
+
+// 直接シートに保存
+async function saveToSheetDirect(tweetData, sheetId, sheetTitle) {
+    try {
+        const apiToken = await getApiToken();
+        if (!apiToken) {
+            throw new Error('APIトークンが取得できませんでした');
+        }
+
+        const response = await fetch(`${XSHEET_BASE_URL}/api/posts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-API-Token': apiToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                url: tweetData.url,
+                content: tweetData.text || '',
+                sheetId: sheetId
+            })
+        });
+
+        if (response.ok) {
+            showNotification(`シート「${sheetTitle}」に追加しました`, 'success');
+        } else if (response.status === 401) {
+            showApiKeyErrorModal('APIキーが無効または期限切れです。');
+        } else {
+            const data = await response.json();
+            throw new Error(data.error || '保存に失敗しました');
+        }
+    } catch (error) {
+        console.error('シートへの保存に失敗:', error);
+        throw error;
+    }
 }
 
 // 拡張機能の初期化
