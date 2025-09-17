@@ -841,7 +841,25 @@ function createClassificationDiv(sheets, likeButton) {
 function createSheetButton(sheet, likeButton) {
     const button = document.createElement('button');
     button.className = 'xsheet-sheet-button';
-    button.textContent = sheet.title;
+    
+    // SVGアイコンを作成（フォルダアイコン）
+    const svgIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgIcon.setAttribute('width', '16');
+    svgIcon.setAttribute('height', '16');
+    svgIcon.setAttribute('viewBox', '0 0 512 512');
+    svgIcon.setAttribute('fill', 'currentColor');
+    svgIcon.style.cssText = 'margin-right: 4px; vertical-align: middle;';
+    
+    // フォルダのパス要素を作成
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M492.459,128.673c-12-12.033-28.836-19.558-47.18-19.542H249.91c-4.598-0.016-8.533-1.795-11.565-4.795c-3-3.041-4.779-6.967-4.795-11.566v-3.278c0.016-18.345-7.508-35.188-19.541-47.18c-11.992-12.033-28.836-19.558-47.18-19.541H66.721c-18.344-0.017-35.189,7.508-47.18,19.541C7.508,54.303-0.017,71.147,0,89.492v44.819v44.484v243.722c-0.017,18.344,7.508,35.188,19.541,47.172c12,12.033,28.836,19.557,47.18,19.541h378.558c18.344,0.016,35.18-7.508,47.18-19.541c12.033-11.984,19.558-28.828,19.541-47.172V175.853C512.017,157.508,504.492,140.664,492.459,128.673z M461.639,422.517c-0.017,4.598-1.787,8.524-4.787,11.566c-3.041,2.991-6.976,4.77-11.574,4.787H66.721c-4.598-0.017-8.533-1.796-11.574-4.787c-3-3.041-4.77-6.968-4.786-11.566V178.795v-44.484V89.492c0.017-4.599,1.795-8.524,4.795-11.574c3.041-3,6.968-4.771,11.566-4.787h100.107c4.598,0.016,8.524,1.787,11.565,4.787c3,3.049,4.778,6.975,4.795,11.574v3.278c-0.017,18.345,7.508,35.18,19.541,47.18c11.992,12.033,28.836,19.558,47.18,19.541h195.369c4.598,0.017,8.524,1.787,11.565,4.788c3,3.049,4.778,6.975,4.795,11.574V422.517z');
+    
+    svgIcon.appendChild(path);
+    
+    // ボタンの内容を設定
+    button.appendChild(svgIcon);
+    button.appendChild(document.createTextNode(sheet.title));
+    
     button.style.cssText = `
         background: none;
         color: #71767B;
@@ -852,6 +870,8 @@ function createSheetButton(sheet, likeButton) {
         font-weight: 500;
         cursor: pointer;
         transition: background-color 0.2s ease;
+        display: flex;
+        align-items: center;
     `;
 
     button.addEventListener('mouseenter', () => {
@@ -897,7 +917,13 @@ function createSheetButton(sheet, likeButton) {
             // ボタンの状態を永続的に変更（いいね後）
             button.style.background = 'none';
             button.style.color = 'rgb(249, 24, 128)';
-            button.textContent = '✓ 保存済み';
+            
+            // ボタンのテキストのみを「保存済み」に変更（フォルダアイコンは維持）
+            // const textNode = button.lastChild;
+            // if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+            //     textNode.textContent = '保存済み';
+            // }
+            
             button.dataset.xsheetSaved = 'true';
             
             // デバッグ用：属性が正しく設定されているか確認
