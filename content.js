@@ -615,8 +615,8 @@ function showApiKeyModal() {
 }
 
 // ベースURL設定（開発環境と本番環境の切り替え）
-// const XSHEET_BASE_URL = 'https://x-sheet.com'; // 本番環境
-const XSHEET_BASE_URL = 'http://localhost:8443'; // 開発環境
+const XSHEET_BASE_URL = 'https://x-sheet.com'; // 本番環境
+// const XSHEET_BASE_URL = 'http://localhost:8443'; // 開発環境
 
 // アカウント情報を保持する変数
 let accountInfo = {
