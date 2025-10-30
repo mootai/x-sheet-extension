@@ -10,7 +10,7 @@ X (旧Twitter) のいいねをカテゴリー別に整理・公開できるWeb�
  拡張機能の始め方
 # 1. Webアプリでの準備
 [X-Sheet](https://x-sheet.com/login) にアクセスし、アカウントを作成・ログインします。
-
+<img width="1886" height="943" alt="Image" src="https://github.com/user-attachments/assets/a7e13488-b19e-4da4-9683-7d6dfad1693b" />
 「シート」を作成し、いいねを分類するためのカテゴリーを準備します。
 
 ログイン後、ページ下部にある「Keyを発行する」リンクをクリックして、APIキーを取得します。
