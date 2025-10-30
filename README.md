@@ -11,6 +11,7 @@ X (旧Twitter) のいいねをカテゴリー別に整理・公開できるWeb�
 # 1. Webアプリでの準備
 [X-Sheet](https://x-sheet.com/login) にアクセスし、アカウントを作成・ログインします。
 <img width="1886" height="943" alt="Image" src="https://github.com/user-attachments/assets/a7e13488-b19e-4da4-9683-7d6dfad1693b" />
+
 「シート」を作成し、いいねを分類するためのカテゴリーを準備します。
 <img width="1918" height="945" alt="Image" src="https://github.com/user-attachments/assets/5c66e878-610c-495b-9610-c70909b0c899" />
 
@@ -32,7 +33,9 @@ X-Sheetにログインした状態で、Xのタイムラインに戻ります。
 ページ更新後 APIキーを再入力から、Webアプリで発行したAPIキーを入力して連携します。
 <img width="1113" height="901" alt="Image" src="https://github.com/user-attachments/assets/655cf2f9-2e6b-4291-abe8-07651a7863fe" />
 
-設定が完了すると、いいねボタンを押すだけで、自動的にX-Sheetのカテゴリーにいいねが分類されます。
+設定が完了して再度ページを更新すると、先ほど追加したシートボタンがついかされカテゴライズすることがかのうになります。
 ![Image](https://github.com/user-attachments/assets/e3be976e-62bd-4b33-9c59-9b0825964977)
 
 ![Image](https://github.com/user-attachments/assets/33b1b96a-844e-4f43-ac96-7134d67ed61e)
+
+シートに追加した内容は，X-Sheetで確認することができます。
